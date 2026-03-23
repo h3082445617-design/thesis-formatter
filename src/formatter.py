@@ -113,9 +113,16 @@ class DocumentFormatter:
                             run.font.size = self.body_font_size
 
     def _detect_and_format_titles(self, doc):
-        """Detect and format titles by hierarchy (H1, H2, H3)."""
+        """Detect and format titles by hierarchy (H1, H2, H3) including number patterns."""
+        import re
+
         for i, paragraph in enumerate(doc.paragraphs):
             if not paragraph.runs:
+                continue
+
+            # Get paragraph text
+            para_text = paragraph.text.strip()
+            if not para_text:
                 continue
 
             # First check Word style
@@ -130,21 +137,34 @@ class DocumentFormatter:
                 self._format_heading3(paragraph)
                 continue
 
-            # Then try to detect by font size and formatting
-            first_run = paragraph.runs[0]
-            current_size = first_run.font.size
-            is_bold = first_run.bold
+            # Detect by number pattern (e.g., "3.1.1" or "3.1")
+            # Match patterns like "3", "3.1", "3.1.1", "第三章", etc.
+            level1_pattern = r'^[第一二三四五六七八九十]+章|^\d+\s'  # Single chapter like "第三章" or "1 "
+            level2_pattern = r'^\d+\.\d+\s'  # Pattern like "3.1 "
+            level3_pattern = r'^\d+\.\d+\.\d+\s'  # Pattern like "3.1.1 "
 
-            # Detect by font size and bold
-            if is_bold or (current_size and current_size >= Pt(16)):
-                # Level 1 heading
-                self._format_heading1(paragraph)
-            elif current_size and current_size >= Pt(13) and is_bold:
-                # Level 2 heading
-                self._format_heading2(paragraph)
-            elif is_bold and current_size and current_size == Pt(12):
-                # Level 3 heading (12pt bold)
+            if re.match(level3_pattern, para_text):
                 self._format_heading3(paragraph)
+            elif re.match(level2_pattern, para_text):
+                self._format_heading2(paragraph)
+            elif re.match(level1_pattern, para_text):
+                self._format_heading1(paragraph)
+            else:
+                # Try to detect by font size and formatting as fallback
+                first_run = paragraph.runs[0]
+                current_size = first_run.font.size
+                is_bold = first_run.bold
+
+                # Detect by font size and bold
+                if is_bold or (current_size and current_size >= Pt(16)):
+                    # Level 1 heading
+                    self._format_heading1(paragraph)
+                elif current_size and current_size >= Pt(13) and is_bold:
+                    # Level 2 heading
+                    self._format_heading2(paragraph)
+                elif is_bold and current_size and current_size == Pt(12):
+                    # Level 3 heading (12pt bold)
+                    self._format_heading3(paragraph)
 
     def _format_heading1(self, paragraph):
         """Format as level 1 heading: HeiBei 18pt bold centered."""
