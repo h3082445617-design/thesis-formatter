@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论文排版助手 - Thesis Formatter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 论文排版助手</h1>
+            <p class="subtitle">Thesis Formatter</p>
+            <p class="description">自动按照GB/T 7714国标格式化你的硕士学位论文</p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📤</div>
+                <h2>上传论文文件</h2>
+                <p class="upload-text">拖拽或点击选择 Word 文件</p>
+                <p class="upload-subtext">(支持 .docx 格式，最大 50MB)</p>
+                <input type="file" id="fileInput" accept=".docx" hidden>
+            </div>
+
+            <div class="features">
+                <h3>本工具支持以下格式化操作：</h3>
+                <ul>
+                    <li>✓ 字体统一（宋体 12pt）</li>
+                    <li>✓ 行距统一（1.5倍行距）</li>
+                    <li>✓ 标题格式化（多级标题）</li>
+                    <li>✓ 页码添加（页脚中心）</li>
+                    <li>✓ 页边距调整（国标规范）</li>
+                    <li>✓ 段落间距统一</li>
+                </ul>
+            </div>
+
+            <div class="button-group">
+                <button id="formatBtn" class="btn btn-primary" disabled>开始排版</button>
+                <button class="btn btn-secondary">使用说明</button>
+                <button class="btn btn-secondary">FAQ</button>
+            </div>
+
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            <div id="progressBar" class="progress-bar" style="display: none;">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
