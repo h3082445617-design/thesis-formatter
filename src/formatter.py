@@ -63,6 +63,8 @@ class DocumentFormatter:
         try:
             # Apply formatting
             self._unify_fonts_and_spacing(doc)
+            self._detect_and_format_titles(doc)
+            self._apply_margins(doc)
 
             # Generate output path
             base, ext = os.path.splitext(input_path)
@@ -106,3 +108,62 @@ class DocumentFormatter:
                         for run in paragraph.runs:
                             run.font.name = self.body_font_name
                             run.font.size = self.body_font_size
+
+    def _detect_and_format_titles(self, doc):
+        """Detect and format titles by hierarchy (H1, H2, H3)."""
+        for i, paragraph in enumerate(doc.paragraphs):
+            if not paragraph.runs:
+                continue
+
+            # Get current font size to infer hierarchy
+            first_run = paragraph.runs[0]
+            current_size = first_run.font.size
+
+            # Simple heuristic: larger fonts are higher hierarchy
+            # This is a basic approach; production would use Word styles
+            if current_size and current_size >= Pt(16):
+                # Likely a level 1 heading
+                self._format_heading1(paragraph)
+            elif current_size and current_size >= Pt(13):
+                # Likely a level 2 heading
+                self._format_heading2(paragraph)
+            elif paragraph.style.name.startswith('Heading'):
+                # Use Word style if available
+                if 'Heading 1' in paragraph.style.name:
+                    self._format_heading1(paragraph)
+                elif 'Heading 2' in paragraph.style.name:
+                    self._format_heading2(paragraph)
+                else:
+                    self._format_heading3(paragraph)
+
+    def _format_heading1(self, paragraph):
+        """Format as level 1 heading: HeiBei 18pt bold centered."""
+        for run in paragraph.runs:
+            run.font.name = '黑体'
+            run.font.size = self.heading1_font_size
+            run.bold = True
+        paragraph.alignment = 1  # Center alignment
+
+    def _format_heading2(self, paragraph):
+        """Format as level 2 heading: HeiBei 14pt bold left."""
+        for run in paragraph.runs:
+            run.font.name = '黑体'
+            run.font.size = self.heading2_font_size
+            run.bold = True
+        paragraph.alignment = 0  # Left alignment
+
+    def _format_heading3(self, paragraph):
+        """Format as level 3 heading: Song 12pt bold left."""
+        for run in paragraph.runs:
+            run.font.name = '宋体'
+            run.font.size = self.heading3_font_size
+            run.bold = True
+        paragraph.alignment = 0  # Left alignment
+
+    def _apply_margins(self, doc):
+        """Apply GB/T 7714 standard margins to all sections."""
+        for section in doc.sections:
+            section.left_margin = self.margin_left
+            section.right_margin = self.margin_right
+            section.top_margin = self.margin_top
+            section.bottom_margin = self.margin_bottom
