@@ -118,26 +118,33 @@ class DocumentFormatter:
             if not paragraph.runs:
                 continue
 
-            # Get current font size to infer hierarchy
+            # First check Word style
+            style_name = paragraph.style.name
+            if 'Heading 1' in style_name or style_name == 'Heading 1':
+                self._format_heading1(paragraph)
+                continue
+            elif 'Heading 2' in style_name or style_name == 'Heading 2':
+                self._format_heading2(paragraph)
+                continue
+            elif 'Heading 3' in style_name or style_name == 'Heading 3':
+                self._format_heading3(paragraph)
+                continue
+
+            # Then try to detect by font size and formatting
             first_run = paragraph.runs[0]
             current_size = first_run.font.size
+            is_bold = first_run.bold
 
-            # Simple heuristic: larger fonts are higher hierarchy
-            # This is a basic approach; production would use Word styles
-            if current_size and current_size >= Pt(16):
-                # Likely a level 1 heading
+            # Detect by font size and bold
+            if is_bold or (current_size and current_size >= Pt(16)):
+                # Level 1 heading
                 self._format_heading1(paragraph)
-            elif current_size and current_size >= Pt(13):
-                # Likely a level 2 heading
+            elif current_size and current_size >= Pt(13) and is_bold:
+                # Level 2 heading
                 self._format_heading2(paragraph)
-            elif paragraph.style.name.startswith('Heading'):
-                # Use Word style if available
-                if 'Heading 1' in paragraph.style.name:
-                    self._format_heading1(paragraph)
-                elif 'Heading 2' in paragraph.style.name:
-                    self._format_heading2(paragraph)
-                else:
-                    self._format_heading3(paragraph)
+            elif is_bold and current_size and current_size == Pt(12):
+                # Level 3 heading (12pt bold)
+                self._format_heading3(paragraph)
 
     def _format_heading1(self, paragraph):
         """Format as level 1 heading: HeiBei 18pt bold centered."""
