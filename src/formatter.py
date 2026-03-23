@@ -100,7 +100,6 @@ class DocumentFormatter:
             # Set font for all runs
             for run in paragraph.runs:
                 run.font.name = self.body_font_name
-                run.font.east_asia_font_name = self.body_font_name  # For Chinese characters
                 run.font.size = self.body_font_size
 
         # Also apply to table cells
@@ -111,7 +110,6 @@ class DocumentFormatter:
                         paragraph.paragraph_format.line_spacing = self.body_line_spacing
                         for run in paragraph.runs:
                             run.font.name = self.body_font_name
-                            run.font.east_asia_font_name = self.body_font_name
                             run.font.size = self.body_font_size
 
     def _detect_and_format_titles(self, doc):
@@ -152,7 +150,6 @@ class DocumentFormatter:
         """Format as level 1 heading: HeiBei 18pt bold centered."""
         for run in paragraph.runs:
             run.font.name = '黑体'
-            run.font.east_asia_font_name = '黑体'
             run.font.size = self.heading1_font_size
             run.bold = True
         paragraph.alignment = 1  # Center alignment
@@ -161,7 +158,6 @@ class DocumentFormatter:
         """Format as level 2 heading: HeiBei 14pt bold left."""
         for run in paragraph.runs:
             run.font.name = '黑体'
-            run.font.east_asia_font_name = '黑体'
             run.font.size = self.heading2_font_size
             run.bold = True
         paragraph.alignment = 0  # Left alignment
@@ -170,7 +166,6 @@ class DocumentFormatter:
         """Format as level 3 heading: Song 12pt bold left."""
         for run in paragraph.runs:
             run.font.name = '宋体'
-            run.font.east_asia_font_name = '宋体'
             run.font.size = self.heading3_font_size
             run.bold = True
         paragraph.alignment = 0  # Left alignment
