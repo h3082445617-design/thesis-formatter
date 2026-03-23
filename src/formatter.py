@@ -3,6 +3,8 @@
 from docx import Document
 from docx.shared import Pt, Cm
 from docx.enum.text import WD_LINE_SPACING
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from src.exceptions import FormattingError, FileCorruptedError, InvalidFileFormatError
 import os
 import time
@@ -65,6 +67,7 @@ class DocumentFormatter:
             self._unify_fonts_and_spacing(doc)
             self._detect_and_format_titles(doc)
             self._apply_margins(doc)
+            self._add_page_numbers(doc)
 
             # Generate output path
             base, ext = os.path.splitext(input_path)
@@ -167,3 +170,32 @@ class DocumentFormatter:
             section.right_margin = self.margin_right
             section.top_margin = self.margin_top
             section.bottom_margin = self.margin_bottom
+
+    def _add_page_numbers(self, doc):
+        """Add page numbers to footer center of all sections."""
+        for section in doc.sections:
+            footer = section.footer
+            # Clear existing footer content
+            for para in footer.paragraphs:
+                p = para._element
+                p.getparent().remove(p)
+
+            # Create centered paragraph with page number field
+            para = footer.add_paragraph()
+            para.alignment = 1  # Center alignment
+
+            # Add page number field
+            run = para.add_run()
+            fldChar1 = OxmlElement('w:fldChar')
+            fldChar1.set(qn('w:fldCharType'), 'begin')
+
+            instrText = OxmlElement('w:instrText')
+            instrText.set(qn('xml:space'), 'preserve')
+            instrText.text = "PAGE"
+
+            fldChar2 = OxmlElement('w:fldChar')
+            fldChar2.set(qn('w:fldCharType'), 'end')
+
+            run._r.append(fldChar1)
+            run._r.append(instrText)
+            run._r.append(fldChar2)
