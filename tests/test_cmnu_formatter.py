@@ -170,6 +170,83 @@ class TestCmnuFormatter:
         formatter._format_abstract(doc, parts)
         # 如果没有错误，测试通过
 
+    # 新增：正文部分的标题检测测试
+    def test_detect_heading_level_1(self):
+        """测试一级标题检测: '第1章 绪论'"""
+        formatter = CmnuFormatter()
+        assert formatter._detect_heading_level('第1章 绪论') == 1
+        assert formatter._detect_heading_level('第2章 文献综述') == 1
+        assert formatter._detect_heading_level('1 绪论') == 1
+        assert formatter._detect_heading_level('2 文献综述') == 1
+
+    def test_detect_heading_level_2(self):
+        """测试二级标题检测: '1.1 研究背景'"""
+        formatter = CmnuFormatter()
+        assert formatter._detect_heading_level('1.1 研究背景') == 2
+        assert formatter._detect_heading_level('1.1. 研究背景') == 2
+        assert formatter._detect_heading_level('2.3 理论基础') == 2
+
+    def test_detect_heading_level_3(self):
+        """测试三级标题检测: '1.1.1 问题阐述'"""
+        formatter = CmnuFormatter()
+        assert formatter._detect_heading_level('1.1.1 问题阐述') == 3
+        assert formatter._detect_heading_level('1.1.1. 问题阐述') == 3
+        assert formatter._detect_heading_level('2.3.5 细节分析') == 3
+
+    def test_detect_heading_level_0(self):
+        """测试非标题文本: '这是普通正文文本。'"""
+        formatter = CmnuFormatter()
+        assert formatter._detect_heading_level('这是普通正文文本。') == 0
+        assert formatter._detect_heading_level('在这个研究中，我们发现了新的现象。') == 0
+        assert formatter._detect_heading_level('') == 0
+
+    # 新增：正文格式化测试
+    def test_format_body_heading_level_1(self, tmp_path):
+        """测试一级标题格式化（黑体Pt(16)，加粗，居中）"""
+        doc = Document()
+        para = doc.add_paragraph('第1章 绪论')
+
+        input_path = tmp_path / "test_body_h1.docx"
+        doc.save(str(input_path))
+
+        formatter = CmnuFormatter()
+        parts = {'body': (0, 0)}
+
+        doc = Document(str(input_path))
+        formatter._format_body(doc, parts)
+
+        # 检查标题格式
+        title_para = doc.paragraphs[0]
+        assert title_para.paragraph_format.alignment == 1  # 居中
+        if title_para.runs:
+            title_run = title_para.runs[0]
+            assert title_run.font.name == '黑体'
+            assert title_run.font.size == Pt(16)  # 三号
+            assert title_run.bold == True
+
+    def test_format_body_heading_level_2(self, tmp_path):
+        """测试二级标题格式化（黑体Pt(14)，加粗，左对齐）"""
+        doc = Document()
+        para = doc.add_paragraph('1.1 研究背景')
+
+        input_path = tmp_path / "test_body_h2.docx"
+        doc.save(str(input_path))
+
+        formatter = CmnuFormatter()
+        parts = {'body': (0, 0)}
+
+        doc = Document(str(input_path))
+        formatter._format_body(doc, parts)
+
+        # 检查标题格式
+        title_para = doc.paragraphs[0]
+        assert title_para.paragraph_format.alignment == 0  # 左对齐
+        if title_para.runs:
+            title_run = title_para.runs[0]
+            assert title_run.font.name == '黑体'
+            assert title_run.font.size == Pt(14)  # 四号
+            assert title_run.bold == True
+
 
 class TestSectionDetector:
     """部分检测器测试"""

@@ -1,5 +1,6 @@
 """中央民族大学学位论文格式化器"""
 
+import re
 from typing import Dict, Tuple, Optional
 from pathlib import Path
 from docx import Document
@@ -174,13 +175,123 @@ class CmnuFormatter:
                 pf.space_before = Pt(0)
                 pf.space_after = Pt(6)
 
+    def _detect_heading_level(self, text: str) -> int:
+        """
+        检测段落的标题级别
+
+        Args:
+            text: 段落文本
+
+        Returns:
+            int: 标题级别
+                - 3: 三级标题 (e.g., "1.1.1 ")
+                - 2: 二级标题 (e.g., "1.1 ")
+                - 1: 一级标题 (e.g., "第1章", "1 ")
+                - 0: 普通文本
+        """
+        if not text or not isinstance(text, str):
+            return 0
+
+        text = text.strip()
+        if not text:
+            return 0
+
+        # 按优先级检测：先检测3级，再检测2级，最后检测1级
+        # 三级标题: 1.1.1 或 1.1.1.
+        if re.match(r'^\d+\.\d+\.\d+[\.\s]', text):
+            return 3
+
+        # 二级标题: 1.1 或 1.1.
+        if re.match(r'^\d+\.\d+[\.\s]', text):
+            return 2
+
+        # 一级标题: 第1章、第二章 或 1 、2 等
+        if re.match(r'^(第[一二三四五六七八九十〇\d]+章|[\d\u4e00-\u9fff]\s)', text):
+            return 1
+
+        # 非标题
+        return 0
+
     def _format_toc(self, doc: Document, parts: Dict):
         """格式化目录"""
         pass
 
     def _format_body(self, doc: Document, parts: Dict):
-        """格式化正文"""
-        pass
+        """
+        格式化正文
+
+        标题格式化规则：
+        - 一级标题: 黑体 Pt(16)，加粗，居中，单倍行距，段前24磅/段后18磅
+        - 二级标题: 黑体 Pt(14)，加粗，左对齐，20磅行距，段前24磅/段后6磅
+        - 三级标题: 黑体 Pt(12)，加粗，左对齐，20磅行距，段前12磅/段后6磅
+        - 普通文本: 宋体 Pt(12)，1.5倍行距，0.5cm首行缩进，两端对齐，段前0/段后6磅
+        """
+        # 验证 parts 字典结构
+        if parts.get('body') is None:
+            return
+
+        body_part = parts.get('body')
+        if not isinstance(body_part, tuple) or len(body_part) != 2:
+            if self.debug:
+                print(f"Warning: Invalid body part definition: {body_part}")
+            return
+
+        start, end = body_part
+
+        for idx in range(start, end + 1):
+            if idx >= len(doc.paragraphs):
+                break
+
+            para = doc.paragraphs[idx]
+            text = para.text.strip()
+
+            # 检测标题级别
+            heading_level = self._detect_heading_level(text)
+
+            if heading_level == 1:
+                # 一级标题: 黑体 Pt(16)，加粗，居中，单倍行距，段前24磅/段后18磅
+                if para.runs:
+                    for run in para.runs:
+                        self.style_applier.apply_font(run, '黑体', self.FONT_SIZES['三号'], bold=True)
+                pf = para.paragraph_format
+                pf.alignment = 1  # 居中
+                pf.line_spacing = 1.0
+                pf.space_before = Pt(24)
+                pf.space_after = Pt(18)
+
+            elif heading_level == 2:
+                # 二级标题: 黑体 Pt(14)，加粗，左对齐，20磅固定行距，段前24磅/段后6磅
+                if para.runs:
+                    for run in para.runs:
+                        self.style_applier.apply_font(run, '黑体', self.FONT_SIZES['四号'], bold=True)
+                pf = para.paragraph_format
+                pf.alignment = 0  # 左对齐
+                pf.line_spacing = 20  # 20磅固定行距
+                pf.space_before = Pt(24)
+                pf.space_after = Pt(6)
+
+            elif heading_level == 3:
+                # 三级标题: 黑体 Pt(12)，加粗，左对齐，20磅固定行距，段前12磅/段后6磅
+                if para.runs:
+                    for run in para.runs:
+                        self.style_applier.apply_font(run, '黑体', self.FONT_SIZES['小四号'], bold=True)
+                pf = para.paragraph_format
+                pf.alignment = 0  # 左对齐
+                pf.line_spacing = 20  # 20磅固定行距
+                pf.space_before = Pt(12)
+                pf.space_after = Pt(6)
+
+            else:
+                # 普通文本: 宋体 Pt(12)，1.5倍行距，0.5cm首行缩进，两端对齐，段前0/段后6磅
+                if para.runs:
+                    for run in para.runs:
+                        self.style_applier.apply_font(run, '宋体', self.FONT_SIZES['小四号'], bold=False)
+                pf = para.paragraph_format
+                pf.alignment = 3  # 两端对齐
+                pf.line_spacing = 1.5
+                pf.first_line_indent = Cm(0.5)
+                pf.space_before = Pt(0)
+                pf.space_after = Pt(6)
 
     def _format_references(self, doc: Document, parts: Dict):
         """格式化参考文献"""
