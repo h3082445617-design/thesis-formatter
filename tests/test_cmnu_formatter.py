@@ -200,6 +200,79 @@ class TestCmnuFormatter:
         assert formatter._detect_heading_level('在这个研究中，我们发现了新的现象。') == 0
         assert formatter._detect_heading_level('') == 0
 
+    # 新增：参考文献格式化测试
+    def test_format_references_title(self, tmp_path):
+        """测试参考文献标题格式化（三号黑体，加粗，居中，1.0倍行距）"""
+        doc = Document()
+        para_title = doc.add_paragraph('参考文献')
+        para_ref1 = doc.add_paragraph('[1] 作者1. 论文题目. 出版社, 2020.')
+        para_ref2 = doc.add_paragraph('[2] 作者2. 另一篇论文. 期刊名, 2021.')
+
+        input_path = tmp_path / "test_references.docx"
+        doc.save(str(input_path))
+
+        formatter = CmnuFormatter()
+        parts = {'references': (0, 2)}
+
+        doc = Document(str(input_path))
+        formatter._format_references(doc, parts)
+
+        # 检查标题格式
+        title_para = doc.paragraphs[0]
+        title_run = title_para.runs[0]
+
+        assert title_run.font.name == '黑体'
+        assert title_run.font.size == Pt(16)  # 三号
+        assert title_run.bold == True
+        assert title_para.paragraph_format.alignment == 1  # 居中
+        assert title_para.paragraph_format.line_spacing == 1.0
+
+    def test_format_references_entry(self, tmp_path):
+        """测试参考文献条目格式化（小四号宋体，1.5倍行距，悬挂缩进）"""
+        doc = Document()
+        para_title = doc.add_paragraph('参考文献')
+        para_ref1 = doc.add_paragraph('[1] 作者1. 论文题目. 出版社, 2020.')
+        para_ref2 = doc.add_paragraph('[2] 作者2. 另一篇论文. 期刊名, 2021.')
+
+        input_path = tmp_path / "test_references_entry.docx"
+        doc.save(str(input_path))
+
+        formatter = CmnuFormatter()
+        parts = {'references': (0, 2)}
+
+        doc = Document(str(input_path))
+        formatter._format_references(doc, parts)
+
+        # 检查第一条参考文献
+        ref_para = doc.paragraphs[1]
+        ref_run = ref_para.runs[0]
+
+        assert ref_run.font.name == '宋体'
+        assert ref_run.font.size == Pt(12)  # 小四号
+        assert ref_para.paragraph_format.line_spacing == 1.5
+
+        # 检查悬挂缩进
+        pf = ref_para.paragraph_format
+        # 悬挂缩进：first_line_indent 为负值，left_indent 为正值
+        assert pf.first_line_indent == -Cm(0.64)
+        assert pf.left_indent == Cm(0.64)
+
+    def test_format_references_missing_part(self, tmp_path):
+        """测试参考文献部分缺失时的行为"""
+        doc = Document()
+        doc.add_paragraph('正文内容')
+
+        input_path = tmp_path / "test_no_references.docx"
+        doc.save(str(input_path))
+
+        formatter = CmnuFormatter()
+        parts = {'references': None}  # 参考文献部分不存在
+
+        doc = Document(str(input_path))
+        # 应该提前返回，不出错
+        formatter._format_references(doc, parts)
+        assert len(doc.paragraphs) == 1
+
     # 新增：正文格式化测试
     def test_format_body_heading_level_1(self, tmp_path):
         """测试一级标题格式化（黑体Pt(16)，加粗，居中）"""

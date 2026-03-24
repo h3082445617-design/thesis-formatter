@@ -294,8 +294,56 @@ class CmnuFormatter:
                 pf.space_after = Pt(6)
 
     def _format_references(self, doc: Document, parts: Dict):
-        """格式化参考文献"""
-        pass
+        """
+        格式化参考文献
+
+        标题: 三号黑体，加粗，居中，单倍行距，段前24磅/段后18磅
+        条目: 小四号宋体，1.5倍行距，悬挂缩进（-0.25英寸）
+        """
+        # 验证 parts 字典结构
+        if parts.get('references') is None:
+            return
+
+        references_part = parts.get('references')
+        if not isinstance(references_part, tuple) or len(references_part) != 2:
+            if self.debug:
+                print(f"Warning: Invalid references part definition: {references_part}")
+            return
+
+        start, end = references_part
+
+        for idx in range(start, end + 1):
+            if idx >= len(doc.paragraphs):
+                break
+
+            para = doc.paragraphs[idx]
+            text = para.text.strip()
+
+            # 标题行（参考文献）
+            if '参考文献' in text and idx == start:
+                if para.runs:  # 检查 runs 是否非空
+                    for run in para.runs:
+                        self.style_applier.apply_font(run, '黑体', self.FONT_SIZES['三号'], bold=True)
+                pf = para.paragraph_format
+                pf.alignment = 1  # 居中
+                pf.line_spacing = 1.0
+                pf.space_before = Pt(24)
+                pf.space_after = Pt(18)
+
+            # 参考文献条目
+            else:
+                if para.runs:  # 检查 runs 是否非空
+                    for run in para.runs:
+                        self.style_applier.apply_font(run, '宋体', self.FONT_SIZES['小四号'], bold=False)
+
+                # 应用段落格式和悬挂缩进
+                pf = para.paragraph_format
+                pf.line_spacing = 1.5
+                pf.space_before = Pt(0)
+                pf.space_after = Pt(6)
+
+                # 应用悬挂缩进（-0.25英寸 ≈ -0.64cm）
+                self.style_applier.apply_hanging_indent(para, Cm(0.64))
 
     def _format_appendix(self, doc: Document, parts: Dict):
         """格式化附录"""
