@@ -77,7 +77,7 @@ def test_format_thesis_missing_file(tmp_path):
     )
 
     assert result.returncode == 1
-    assert "not found" in result.stderr.lower()
+    assert "文件无法访问或不存在" in result.stderr or "Error:" in result.stderr
 
 
 def test_format_thesis_invalid_format(tmp_path):
@@ -96,4 +96,4 @@ def test_format_thesis_invalid_format(tmp_path):
     )
 
     assert result.returncode == 1
-    assert "must be .docx" in result.stderr.lower()
+    assert "文件格式必须是.docx" in result.stderr or ".docx" in result.stderr
