@@ -15,10 +15,13 @@ def test_format_thesis_basic(tmp_path):
     input_path = tmp_path / "test.docx"
     test_doc.save(input_path)
 
+    # Get project root for reliable test execution
+    project_root = Path(__file__).parent.parent
+
     # Run CLI
     result = subprocess.run(
         ['python', 'format_thesis.py', str(input_path)],
-        cwd='/c/Users/Administrator/thesis-formatter',
+        cwd=str(project_root),
         capture_output=True,
         text=True
     )
@@ -27,9 +30,14 @@ def test_format_thesis_basic(tmp_path):
     assert result.returncode == 0, f"stderr: {result.stderr}"
     assert "successfully" in result.stdout.lower() or "formatted" in result.stdout.lower(), \
         f"stdout: {result.stdout}"
+
     # Verify output file exists
     output_path = input_path.parent / "test_formatted.docx"
     assert output_path.exists(), f"Output file not found at {output_path}"
+
+    # Verify document was actually formatted (content verification)
+    formatted_doc = Document(str(output_path))
+    assert len(formatted_doc.paragraphs) > 0, "Formatted document has no paragraphs"
 
 
 def test_format_thesis_custom_output(tmp_path):
@@ -41,9 +49,12 @@ def test_format_thesis_custom_output(tmp_path):
 
     output_path = tmp_path / "custom_output.docx"
 
+    # Get project root for reliable test execution
+    project_root = Path(__file__).parent.parent
+
     result = subprocess.run(
         ['python', 'format_thesis.py', str(input_path), '-o', str(output_path)],
-        cwd='/c/Users/Administrator/thesis-formatter',
+        cwd=str(project_root),
         capture_output=True,
         text=True
     )
@@ -55,9 +66,12 @@ def test_format_thesis_custom_output(tmp_path):
 
 def test_format_thesis_missing_file(tmp_path):
     """Test CLI with non-existent file."""
+    # Get project root for reliable test execution
+    project_root = Path(__file__).parent.parent
+
     result = subprocess.run(
         ['python', 'format_thesis.py', str(tmp_path / 'nonexistent.docx')],
-        cwd='/c/Users/Administrator/thesis-formatter',
+        cwd=str(project_root),
         capture_output=True,
         text=True
     )
@@ -71,12 +85,15 @@ def test_format_thesis_invalid_format(tmp_path):
     invalid_file = tmp_path / 'test.txt'
     invalid_file.write_text("test")
 
+    # Get project root for reliable test execution
+    project_root = Path(__file__).parent.parent
+
     result = subprocess.run(
         ['python', 'format_thesis.py', str(invalid_file)],
-        cwd='/c/Users/Administrator/thesis-formatter',
+        cwd=str(project_root),
         capture_output=True,
         text=True
     )
 
     assert result.returncode == 1
-    assert "must be .docx" in result.stderr.lower() or ".docx" in result.stderr.lower()
+    assert "must be .docx" in result.stderr.lower()

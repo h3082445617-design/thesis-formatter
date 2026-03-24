@@ -30,25 +30,21 @@ def main():
     args = parser.parse_args()
 
     try:
-        # Validate input file
         input_path = Path(args.input)
-        if not input_path.exists():
-            print(f"Error: File not found: {input_path}", file=sys.stderr)
-            return 1
 
-        if input_path.suffix.lower() != '.docx':
-            print(f"Error: File must be .docx format, got {input_path.suffix}", file=sys.stderr)
-            return 1
-
-        # Format document
+        # Format document (DocumentFormatter handles validation)
         formatter = DocumentFormatter()
         formatted_path = formatter.format_document(str(input_path), keep_original=False)
 
         # Handle output path if specified
         if args.output:
-            output_path = Path(args.output)
-            os.rename(formatted_path, output_path)
-            formatted_path = str(output_path)
+            try:
+                output_path = Path(args.output)
+                os.rename(formatted_path, output_path)
+                formatted_path = str(output_path)
+            except OSError as e:
+                print(f"Error: Failed to write output file - {str(e)}", file=sys.stderr)
+                return 1
 
         print(f"Successfully formatted thesis document")
         print(f"  Input:  {input_path}")
