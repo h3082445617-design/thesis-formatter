@@ -24,6 +24,7 @@ class CmnuFormatter:
         '三号': Pt(16),      # 摘要标题
         '四号': Pt(14),      # 关键词标签
         '小四号': Pt(12),    # 关键词内容、正文
+        '五号': Pt(10.5),    # 参考文献条目
     }
 
     def __init__(self):
@@ -298,7 +299,7 @@ class CmnuFormatter:
         格式化参考文献
 
         标题: 三号黑体，加粗，居中，单倍行距，段前24磅/段后18磅
-        条目: 小四号宋体，1.5倍行距，悬挂缩进（-0.25英寸）
+        条目: 五号宋体，1.5倍行距，两端对齐，悬挂缩进（-0.25英寸），段前0/段后6磅
         """
         # 验证 parts 字典结构
         if parts.get('references') is None:
@@ -334,10 +335,11 @@ class CmnuFormatter:
             else:
                 if para.runs:  # 检查 runs 是否非空
                     for run in para.runs:
-                        self.style_applier.apply_font(run, '宋体', self.FONT_SIZES['小四号'], bold=False)
+                        self.style_applier.apply_font(run, '宋体', self.FONT_SIZES['五号'], bold=False)
 
                 # 应用段落格式和悬挂缩进
                 pf = para.paragraph_format
+                pf.alignment = 3  # 两端对齐 (justified)
                 pf.line_spacing = 1.5
                 pf.space_before = Pt(0)
                 pf.space_after = Pt(6)

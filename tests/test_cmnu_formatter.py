@@ -228,7 +228,7 @@ class TestCmnuFormatter:
         assert title_para.paragraph_format.line_spacing == 1.0
 
     def test_format_references_entry(self, tmp_path):
-        """测试参考文献条目格式化（小四号宋体，1.5倍行距，悬挂缩进）"""
+        """测试参考文献条目格式化（五号宋体，1.5倍行距，悬挂缩进，两端对齐）"""
         doc = Document()
         para_title = doc.add_paragraph('参考文献')
         para_ref1 = doc.add_paragraph('[1] 作者1. 论文题目. 出版社, 2020.')
@@ -248,8 +248,9 @@ class TestCmnuFormatter:
         ref_run = ref_para.runs[0]
 
         assert ref_run.font.name == '宋体'
-        assert ref_run.font.size == Pt(12)  # 小四号
+        assert ref_run.font.size == Pt(10.5)  # 五号
         assert ref_para.paragraph_format.line_spacing == 1.5
+        assert ref_para.paragraph_format.alignment == 3  # 两端对齐
 
         # 检查悬挂缩进
         pf = ref_para.paragraph_format
