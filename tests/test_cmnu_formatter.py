@@ -25,7 +25,6 @@ class TestCmnuFormatter:
 
         assert formatter is not None
         assert hasattr(formatter, 'format_document')
-        assert hasattr(formatter, '_detect_parts')
         assert hasattr(formatter, '_format_abstract')
         assert hasattr(formatter, '_format_body')
 
@@ -53,6 +52,21 @@ class TestCmnuFormatter:
         # 验证输出文档可以打开
         output_doc = Document(output_path)
         assert len(output_doc.paragraphs) > 0
+
+    def test_format_nonexistent_file(self):
+        """测试处理不存在的文件"""
+        formatter = CmnuFormatter()
+        with pytest.raises(FileNotFoundError):
+            formatter.format_document("/nonexistent/path/file.docx")
+
+    def test_format_invalid_input_path(self):
+        """测试无效的输入路径"""
+        formatter = CmnuFormatter()
+        with pytest.raises(ValueError):
+            formatter.format_document(None)
+
+        with pytest.raises(ValueError):
+            formatter.format_document("")
 
 
 class TestSectionDetector:

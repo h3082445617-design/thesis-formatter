@@ -35,11 +35,29 @@ class CmnuFormatter:
 
         Returns:
             输出文件路径
+
+        Raises:
+            ValueError: 如果 input_path 无效
+            FileNotFoundError: 如果文件不存在
+            IOError: 如果文件操作失败
         """
         self.debug = debug
 
-        # 打开文档
-        doc = Document(input_path)
+        # 1. 验证输入路径
+        if not input_path or not isinstance(input_path, str):
+            raise ValueError(f"input_path must be a non-empty string, got: {input_path}")
+
+        input_file = Path(input_path)
+        if not input_file.exists():
+            raise FileNotFoundError(f"Input file does not exist: {input_path}")
+
+        # 2. 打开文档
+        try:
+            doc = Document(input_path)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Input file not found: {input_path}")
+        except Exception as e:
+            raise IOError(f"Failed to open document: {input_path}. Error: {str(e)}")
 
         # 1. 检测各部分
         detector = SectionDetector(doc)
@@ -67,6 +85,10 @@ class CmnuFormatter:
             base_path = Path(input_path)
             output_path = str(base_path.parent / f"{base_path.stem}_formatted.docx")
 
+        # 确保输出目录存在
+        output_dir = Path(output_path).parent
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         doc.save(output_path)
 
         if self.debug:
@@ -81,11 +103,6 @@ class CmnuFormatter:
             section.bottom_margin = self.MARGINS['bottom']
             section.left_margin = self.MARGINS['left']
             section.right_margin = self.MARGINS['right']
-
-    def _detect_parts(self, doc: Document) -> Dict[str, Optional[Tuple[int, int]]]:
-        """检测论文各部分"""
-        detector = SectionDetector(doc)
-        return detector.detect_parts()
 
     # TODO: 实现各部分格式化方法
     def _format_abstract(self, doc: Document, parts: Dict):
