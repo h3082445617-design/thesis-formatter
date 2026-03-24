@@ -2,6 +2,7 @@
 """CMNU 格式化器测试"""
 
 import pytest
+from pathlib import Path
 from docx import Document
 from docx.shared import Pt, Cm
 from src.formatters import CmnuFormatter
@@ -20,8 +21,38 @@ class TestCmnuFormatter:
 
     def test_formatter_initialization(self):
         """测试格式化器初始化"""
-        # TODO: 实现
-        pass
+        formatter = CmnuFormatter()
+
+        assert formatter is not None
+        assert hasattr(formatter, 'format_document')
+        assert hasattr(formatter, '_detect_parts')
+        assert hasattr(formatter, '_format_abstract')
+        assert hasattr(formatter, '_format_body')
+
+    def test_format_simple_document(self, tmp_path):
+        """测试格式化简单文档"""
+        # 创建样本文档
+        input_doc = Document()
+        input_doc.add_paragraph('摘要')
+        input_doc.add_paragraph('这是摘要内容')
+        input_doc.add_paragraph('关键词: 关键词1; 关键词2')
+        input_doc.add_paragraph('第1章 绪论')
+        input_doc.add_paragraph('正文内容')
+
+        # 保存为临时文件
+        input_path = tmp_path / "test_input.docx"
+        input_doc.save(str(input_path))
+
+        # 格式化
+        formatter = CmnuFormatter()
+        output_path = formatter.format_document(str(input_path))
+
+        # 验证输出文件存在
+        assert Path(output_path).exists()
+
+        # 验证输出文档可以打开
+        output_doc = Document(output_path)
+        assert len(output_doc.paragraphs) > 0
 
 
 class TestSectionDetector:
