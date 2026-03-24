@@ -30,8 +30,10 @@ class StyleApplier:
 
     def apply_font(self, run, font_name: str, size: Optional[Pt] = None, bold: bool = False):
         """应用字体样式"""
-        # TODO: 实现
-        pass
+        run.font.name = font_name
+        if size:
+            run.font.size = size
+        run.bold = bold
 
     def apply_paragraph_format(self, paragraph, alignment: int = 0,
                                line_spacing: float = 1.5,
@@ -39,10 +41,19 @@ class StyleApplier:
                                space_after: Pt = None,
                                indent_first_line: Cm = None):
         """应用段落格式"""
-        # TODO: 实现
-        pass
+        pf = paragraph.paragraph_format
+        pf.alignment = alignment
+        pf.line_spacing = line_spacing
+
+        if space_before:
+            pf.space_before = space_before
+        if space_after:
+            pf.space_after = space_after
+        if indent_first_line:
+            pf.first_line_indent = indent_first_line
 
     def apply_hanging_indent(self, paragraph, hanging_indent: Cm = Cm(0.5)):
         """应用悬挂缩进（用于参考文献）"""
-        # TODO: 实现
-        pass
+        pf = paragraph.paragraph_format
+        pf.first_line_indent = -hanging_indent  # 负值表示悬挂
+        pf.left_indent = hanging_indent

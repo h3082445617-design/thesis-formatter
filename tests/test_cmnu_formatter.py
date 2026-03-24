@@ -3,6 +3,7 @@
 
 import pytest
 from docx import Document
+from docx.shared import Pt, Cm
 from src.formatters import CmnuFormatter
 from src.utils import SectionDetector, StyleApplier
 
@@ -117,7 +118,62 @@ class TestSectionDetector:
 class TestStyleApplier:
     """样式应用器测试"""
 
-    def test_apply_font(self):
-        """测试字体应用"""
-        # TODO: 实现
-        pass
+    def test_apply_font_song(self):
+        """测试应用宋体"""
+        doc = Document()
+        para = doc.add_paragraph('测试文本')
+        run = para.runs[0]
+
+        applier = StyleApplier()
+        applier.apply_font(run, '宋体', Pt(12), bold=False)
+
+        assert run.font.name == '宋体'
+        assert run.font.size == Pt(12)
+        assert run.bold == False
+
+    def test_apply_font_hei_bold(self):
+        """测试应用黑体加粗"""
+        doc = Document()
+        para = doc.add_paragraph('标题')
+        run = para.runs[0]
+
+        applier = StyleApplier()
+        applier.apply_font(run, '黑体', Pt(16), bold=True)
+
+        assert run.font.name == '黑体'
+        assert run.font.size == Pt(16)
+        assert run.bold == True
+
+    def test_apply_paragraph_format_standard(self):
+        """测试应用标准段落格式（1.5倍行距、首行缩进）"""
+        doc = Document()
+        para = doc.add_paragraph('正文内容')
+
+        applier = StyleApplier()
+        applier.apply_paragraph_format(
+            para,
+            alignment=0,  # 左对齐
+            line_spacing=1.5,
+            space_before=Pt(0),
+            space_after=Pt(6),
+            indent_first_line=Cm(0.5)
+        )
+
+        pf = para.paragraph_format
+        assert pf.line_spacing == 1.5
+        assert pf.space_before == Pt(0)
+        assert pf.space_after == Pt(6)
+        assert pf.first_line_indent == Cm(0.5)
+
+    def test_apply_hanging_indent(self):
+        """测试参考文献悬挂缩进"""
+        doc = Document()
+        para = doc.add_paragraph('[1] 作者. 标题. 期刊')
+
+        applier = StyleApplier()
+        applier.apply_hanging_indent(para, hanging_indent=Cm(0.5))
+
+        pf = para.paragraph_format
+        # 悬挂缩进: first_line_indent = -hanging_indent
+        assert pf.first_line_indent == Cm(-0.5)
+        assert pf.left_indent == Cm(0.5)
