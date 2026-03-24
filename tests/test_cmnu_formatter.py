@@ -118,6 +118,58 @@ class TestCmnuFormatter:
         assert content_para.paragraph_format.line_spacing == 1.5
         assert content_para.paragraph_format.first_line_indent == Cm(0.5)  # 2字符缩进
 
+    def test_format_abstract_empty_runs(self, tmp_path):
+        """测试空段落不会导致格式化崩溃"""
+        doc = Document()
+        doc.add_paragraph('摘要')
+        # 添加空段落（会有 runs=[] 或类似情况）
+        p = doc.add_paragraph()
+        p.add_run('')
+        doc.add_paragraph('这是摘要内容。')
+
+        input_path = tmp_path / "test_abstract_empty.docx"
+        doc.save(str(input_path))
+
+        formatter = CmnuFormatter()
+        parts = {'abstract': (0, 2)}
+
+        doc = Document(str(input_path))
+        # 不应该崩溃
+        formatter._format_abstract(doc, parts)
+        assert len(doc.paragraphs) == 3
+
+    def test_format_abstract_missing_part(self, tmp_path):
+        """测试摘要部分缺失时的行为"""
+        doc = Document()
+        doc.add_paragraph('正文内容')
+
+        input_path = tmp_path / "test_no_abstract.docx"
+        doc.save(str(input_path))
+
+        formatter = CmnuFormatter()
+        parts = {'abstract': None}  # 摘要部分不存在
+
+        doc = Document(str(input_path))
+        # 应该提前返回，不出错
+        formatter._format_abstract(doc, parts)
+        assert len(doc.paragraphs) == 1
+
+    def test_format_abstract_invalid_range(self, tmp_path):
+        """测试无效范围的处理"""
+        doc = Document()
+        doc.add_paragraph('摘要')
+
+        input_path = tmp_path / "test_invalid_range.docx"
+        doc.save(str(input_path))
+
+        formatter = CmnuFormatter()
+        parts = {'abstract': (100, 200)}  # 超出范围
+
+        doc = Document(str(input_path))
+        # 应该优雅地处理，不出错
+        formatter._format_abstract(doc, parts)
+        # 如果没有错误，测试通过
+
 
 class TestSectionDetector:
     """部分检测器测试"""

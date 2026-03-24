@@ -18,6 +18,13 @@ class CmnuFormatter:
         'right': Cm(2.2)
     }
 
+    # 字体大小常量
+    FONT_SIZES = {
+        '三号': Pt(16),      # 摘要标题
+        '四号': Pt(14),      # 关键词标签
+        '小四号': Pt(12),    # 关键词内容、正文
+    }
+
     def __init__(self):
         """初始化格式化器"""
         self.style_applier = StyleApplier()
@@ -114,10 +121,17 @@ class CmnuFormatter:
         关键词标签: 四号黑体
         关键词内容: 小四号宋体
         """
+        # 验证 parts 字典结构
         if parts.get('abstract') is None:
             return
 
-        start, end = parts['abstract']
+        abstract_part = parts.get('abstract')
+        if not isinstance(abstract_part, tuple) or len(abstract_part) != 2:
+            if self.debug:
+                print(f"Warning: Invalid abstract part definition: {abstract_part}")
+            return
+
+        start, end = abstract_part
 
         for idx in range(start, end + 1):
             if idx >= len(doc.paragraphs):
@@ -128,8 +142,9 @@ class CmnuFormatter:
 
             # 标题行（包含"摘要"）
             if '摘要' in text and idx == start:
-                for run in para.runs:
-                    self.style_applier.apply_font(run, '黑体', Pt(16), bold=True)
+                if para.runs:  # 检查 runs 是否非空
+                    for run in para.runs:
+                        self.style_applier.apply_font(run, '黑体', self.FONT_SIZES['三号'], bold=True)
                 pf = para.paragraph_format
                 pf.alignment = 1  # 居中
                 pf.line_spacing = 1.0
@@ -138,16 +153,20 @@ class CmnuFormatter:
 
             # 关键词标签行
             elif text.startswith('关键词:') or text.startswith('关键词：'):
-                for run in para.runs:
-                    if '关键词' in run.text:
-                        self.style_applier.apply_font(run, '黑体', Pt(14), bold=True)
-                    else:
-                        self.style_applier.apply_font(run, '宋体', Pt(12), bold=False)
+                # 假设：关键词标签和内容在单独的 run 或段落中
+                # 处理格式：[keyword-run]"关键词"[content-run]"词1; 词2"
+                if para.runs:  # 检查 runs 是否非空
+                    for run in para.runs:
+                        if '关键词' in run.text:
+                            self.style_applier.apply_font(run, '黑体', self.FONT_SIZES['四号'], bold=True)
+                        else:
+                            self.style_applier.apply_font(run, '宋体', self.FONT_SIZES['小四号'], bold=False)
 
             # 普通正文
             else:
-                for run in para.runs:
-                    self.style_applier.apply_font(run, '宋体', Pt(12), bold=False)
+                if para.runs:  # 检查 runs 是否非空
+                    for run in para.runs:
+                        self.style_applier.apply_font(run, '宋体', self.FONT_SIZES['小四号'], bold=False)
 
                 pf = para.paragraph_format
                 pf.line_spacing = 1.5
