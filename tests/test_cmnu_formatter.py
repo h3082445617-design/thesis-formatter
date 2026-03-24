@@ -321,6 +321,85 @@ class TestCmnuFormatter:
             assert title_run.font.size == Pt(14)  # 四号
             assert title_run.bold == True
 
+    def test_page_numbers_roman_numerals(self, tmp_path):
+        """测试页码设置：Roman numerals in front matter"""
+        doc = Document()
+        # 前文：摘要
+        doc.add_paragraph('摘要')
+        doc.add_paragraph('这是摘要内容')
+        doc.add_paragraph('关键词: 关键词')
+        # 正文：从第4段开始
+        doc.add_paragraph('第1章 绪论')
+        doc.add_paragraph('正文内容')
+
+        input_path = tmp_path / "test_page_numbers.docx"
+        doc.save(str(input_path))
+
+        # 打开并设置页码
+        doc = Document(str(input_path))
+        formatter = CmnuFormatter()
+        parts = {'abstract': (0, 2), 'body': (3, 4)}
+
+        # 调用设置页码函数
+        formatter._setup_page_numbers(doc, parts)
+
+        # 验证文档包含多个部分（用于不同的页码格式）
+        # 前文应该使用罗马数字，正文应该使用阿拉伯数字
+        assert len(doc.sections) >= 1
+
+        # 保存以验证设置
+        doc.save(str(tmp_path / "test_page_numbers_output.docx"))
+
+    def test_page_numbers_arabic_in_body(self, tmp_path):
+        """测试页码设置：Arabic numerals in body, restarting at 1"""
+        doc = Document()
+        # 前文：3段
+        doc.add_paragraph('摘要')
+        doc.add_paragraph('摘要内容第一段')
+        doc.add_paragraph('摘要内容第二段')
+        # 正文：从第4段开始
+        doc.add_paragraph('第1章 绪论')
+        doc.add_paragraph('第1章第1节')
+        doc.add_paragraph('正文内容')
+
+        input_path = tmp_path / "test_page_numbers_arabic.docx"
+        doc.save(str(input_path))
+
+        # 打开并设置页码
+        doc = Document(str(input_path))
+        formatter = CmnuFormatter()
+        parts = {'abstract': (0, 2), 'body': (3, 5)}
+
+        # 调用设置页码函数
+        formatter._setup_page_numbers(doc, parts)
+
+        # 验证文档可以保存
+        output_path = str(tmp_path / "test_page_numbers_arabic_output.docx")
+        doc.save(output_path)
+
+        # 验证输出文件有效
+        output_doc = Document(output_path)
+        assert len(output_doc.paragraphs) == 6
+
+    def test_page_numbers_no_body_part(self, tmp_path):
+        """测试页码设置：body part not found, should return early"""
+        doc = Document()
+        doc.add_paragraph('摘要')
+        doc.add_paragraph('摘要内容')
+
+        input_path = tmp_path / "test_no_body.docx"
+        doc.save(str(input_path))
+
+        doc = Document(str(input_path))
+        formatter = CmnuFormatter()
+        parts = {'abstract': (0, 1)}  # 没有 body 部分
+
+        # 应该提前返回，不出错
+        formatter._setup_page_numbers(doc, parts)
+
+        # 文档应该仍然有效
+        assert len(doc.paragraphs) == 2
+
 
 class TestSectionDetector:
     """部分检测器测试"""

@@ -5,6 +5,9 @@ from typing import Dict, Tuple, Optional
 from pathlib import Path
 from docx import Document
 from docx.shared import Pt, Cm
+from docx.oxml import OxmlElement, parse_xml
+from docx.oxml.ns import nsdecls, qn
+from docx.enum.section import WD_SECTION
 from src.utils import SectionDetector, StyleApplier
 
 
@@ -86,8 +89,8 @@ class CmnuFormatter:
         self._format_appendix(doc, parts)
         self._format_acknowledgment(doc, parts)
 
-        # 4. 处理页码（最关键，稍后实现）
-        # self._setup_page_numbers(doc, parts)
+        # 4. 处理页码
+        self._setup_page_numbers(doc, parts)
 
         # 5. 保存输出
         if output_path is None:
@@ -354,3 +357,135 @@ class CmnuFormatter:
     def _format_acknowledgment(self, doc: Document, parts: Dict):
         """格式化致谢"""
         pass
+
+    def _setup_page_numbers(self, doc: Document, parts: Dict):
+        """
+        设置双页码系统：前文（罗马数字）和正文（阿拉伯数字）
+
+        Args:
+            doc: 文档对象
+            parts: 各部分范围字典，如 {'body': (3, 4), ...}
+        """
+        # 验证 body 部分是否存在
+        body_part = parts.get('body')
+        if body_part is None:
+            if self.debug:
+                print("No body part found, skipping page numbering setup")
+            return
+
+        if not isinstance(body_part, tuple) or len(body_part) != 2:
+            if self.debug:
+                print(f"Invalid body part definition: {body_part}")
+            return
+
+        body_start, body_end = body_part
+
+        try:
+            # 1. 设置第一部分（前文）为罗马数字
+            self._setup_section_page_numbers(doc.sections[0], 'roman', None)
+
+            # 2. 在正文开始处创建新部分
+            self._create_new_section(doc, body_start)
+
+            # 3. 设置第二部分（正文）为阿拉伯数字，从1开始
+            if len(doc.sections) > 1:
+                self._setup_section_page_numbers(doc.sections[1], 'arabic', 1)
+
+            if self.debug:
+                print(f"Page numbering setup completed: {len(doc.sections)} sections")
+
+        except Exception as e:
+            if self.debug:
+                print(f"Error setting up page numbers: {str(e)}")
+            # 降级方案：应用简单的阿拉伯数字页码到所有部分
+            self._setup_simple_page_numbers(doc)
+
+    def _create_new_section(self, doc: Document, at_paragraph_idx: int):
+        """
+        在指定段落处创建新的部分（section）
+
+        Args:
+            doc: 文档对象
+            at_paragraph_idx: 创建新部分的段落索引
+        """
+        if at_paragraph_idx >= len(doc.paragraphs):
+            if self.debug:
+                print(f"Paragraph index {at_paragraph_idx} out of range")
+            return
+
+        paragraph = doc.paragraphs[at_paragraph_idx]
+        p = paragraph._element
+
+        # 获取原始 section 属性
+        original_sectPr = doc.sections[0]._sectPr
+
+        # 创建新的 section properties
+        new_sectPr = OxmlElement('w:sectPr')
+
+        # 复制关键属性：页面尺寸、边距等
+        for child in original_sectPr:
+            tag_name = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+            # 跳过已有的 page number type 设置
+            if tag_name not in ['pgNumType', 'footerReference', 'headerReference']:
+                new_child = OxmlElement(child.tag)
+                new_child.attrib.update(child.attrib)
+                new_sectPr.append(new_child)
+
+        # 附加新的 section properties 到段落
+        p.append(new_sectPr)
+
+        if self.debug:
+            print(f"Created new section at paragraph {at_paragraph_idx}")
+
+    def _setup_section_page_numbers(self, section, num_format: str, start_num: Optional[int] = None):
+        """
+        为特定部分设置页码格式
+
+        Args:
+            section: 文档部分对象
+            num_format: 页码格式 ('roman' 或 'arabic')
+            start_num: 起始页码（如果为None，继续使用前一部分的编号）
+        """
+        try:
+            sectPr = section._sectPr
+
+            # 创建或修改 page number type 元素
+            pgNumType = sectPr.find(qn('w:pgNumType'))
+            if pgNumType is None:
+                pgNumType = OxmlElement('w:pgNumType')
+                sectPr.insert(0, pgNumType)
+
+            # 设置页码格式
+            if num_format == 'roman':
+                pgNumType.set(qn('w:fmt'), 'upperRoman')
+            elif num_format == 'arabic':
+                pgNumType.set(qn('w:fmt'), 'decimal')
+
+            # 设置起始页码
+            if start_num is not None:
+                pgNumType.set(qn('w:start'), str(start_num))
+
+            if self.debug:
+                print(f"Section page format set to {num_format}, start={start_num}")
+
+        except Exception as e:
+            if self.debug:
+                print(f"Error setting up section page numbers: {str(e)}")
+
+    def _setup_simple_page_numbers(self, doc: Document):
+        """
+        简单的页码设置降级方案：应用阿拉伯数字到所有部分
+
+        Args:
+            doc: 文档对象
+        """
+        try:
+            for section in doc.sections:
+                self._setup_section_page_numbers(section, 'arabic', None)
+
+            if self.debug:
+                print("Applied simple page numbering (Arabic to all sections)")
+
+        except Exception as e:
+            if self.debug:
+                print(f"Error setting up simple page numbers: {str(e)}")
