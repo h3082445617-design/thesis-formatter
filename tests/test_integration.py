@@ -17,6 +17,24 @@ from docx.shared import Pt, Cm
 from src.formatter import DocumentFormatter
 
 
+# Font name constants (from src/formatter.py)
+BODY_FONT_NAMES = {'宋体', 'SimSun', 'Song Ti'}
+HEADING_FONT_NAMES = {'黑体', 'Heibei', 'Arial Black'}
+
+
+@pytest.fixture
+def cleanup_formatted_file():
+    """Fixture to handle cleanup of formatted files."""
+    files_to_remove = []
+    yield files_to_remove
+    for file_path in files_to_remove:
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except OSError:
+            pass  # Silent cleanup failure
+
+
 @pytest.fixture
 def simple_thesis_doc(tmp_path):
     """Create a simple thesis document with abstract, body, references.
@@ -87,7 +105,7 @@ def complex_thesis_doc(tmp_path):
 class TestIntegrationFormatting:
     """Integration tests for complete formatting pipeline."""
 
-    def test_integration_simple_thesis(self, simple_thesis_doc):
+    def test_integration_simple_thesis(self, simple_thesis_doc, cleanup_formatted_file):
         """Test complete formatting of simple thesis document.
 
         This test verifies that:
@@ -98,6 +116,7 @@ class TestIntegrationFormatting:
         """
         formatter = DocumentFormatter()
         formatted_path = formatter.format_document(simple_thesis_doc, keep_original=False)
+        cleanup_formatted_file.append(formatted_path)
 
         # Verify file was created
         assert Path(formatted_path).exists(), "Formatted document should be created"
@@ -115,10 +134,7 @@ class TestIntegrationFormatting:
         assert 'Introduction' in all_text, "Introduction section should be preserved"
         assert '参考文献' in all_text, "References section should be preserved"
 
-        # Cleanup
-        os.remove(formatted_path)
-
-    def test_integration_complex_thesis(self, complex_thesis_doc):
+    def test_integration_complex_thesis(self, complex_thesis_doc, cleanup_formatted_file):
         """Test formatting of realistic thesis with multiple heading levels.
 
         This test verifies that:
@@ -128,6 +144,7 @@ class TestIntegrationFormatting:
         """
         formatter = DocumentFormatter()
         formatted_path = formatter.format_document(str(complex_thesis_doc), keep_original=False)
+        cleanup_formatted_file.append(formatted_path)
 
         formatted_doc = Document(formatted_path)
 
@@ -141,23 +158,24 @@ class TestIntegrationFormatting:
         assert '1.1.1 Historical Context' in all_text, "Level 3 heading should be preserved"
         assert '2 Methodology' in all_text, "Second level 1 heading should be preserved"
         assert '2.1 Approach' in all_text, "Second level 2 heading should be preserved"
-        assert 'Methodology details' in all_text or 'methodology' in all_text.lower(), \
-            "Methodology content should be preserved"
 
-        # Cleanup
-        os.remove(formatted_path)
+        # Verify major sections are preserved (strengthened from tautological check)
+        assert '1 Introduction' in all_text, "Introduction heading should be preserved"
+        assert 'Methodology' in all_text, "Methodology section should be preserved"
+        assert '参考文献' in all_text, "References section should be preserved"
 
-    def test_integration_formatting_rules(self, simple_thesis_doc):
+    def test_integration_formatting_rules(self, simple_thesis_doc, cleanup_formatted_file):
         """Verify all formatting rules are applied correctly.
 
         This test checks:
-        - Margins are set correctly (2.5cm top/bottom, 2cm left/right)
+        - Margins are set correctly (2cm top/bottom, 2.5cm left/right)
         - Body text uses Song font (宋体)
         - Line spacing is set to 1.5
         - Headings are formatted with bold
         """
         formatter = DocumentFormatter()
         formatted_path = formatter.format_document(simple_thesis_doc, keep_original=False)
+        cleanup_formatted_file.append(formatted_path)
 
         formatted_doc = Document(formatted_path)
 
@@ -172,25 +190,32 @@ class TestIntegrationFormatting:
         assert section.right_margin == Cm(2), \
             f"Right margin should be 2cm, got {section.right_margin}"
 
-        # Check line spacing is applied
-        line_spacing_found = False
+        # Verify line spacing is applied to body paragraphs
+        body_paragraph_count = 0
+        body_with_spacing = 0
         for para in formatted_doc.paragraphs:
-            if para.paragraph_format.line_spacing == 1.5:
-                line_spacing_found = True
-                break
-        assert line_spacing_found, "At least one paragraph should have 1.5 line spacing"
+            if para.text.strip() and '摘要' not in para.text and '参考文献' not in para.text:
+                body_paragraph_count += 1
+                # Check for 1.5x line spacing or close approximation (some systems round differently)
+                if para.paragraph_format.line_spacing and abs(para.paragraph_format.line_spacing - 1.5) < 0.1:
+                    body_with_spacing += 1
 
-        # Check at least one paragraph has body formatting
-        body_found = False
+        assert body_paragraph_count > 0, "Document should have body paragraphs"
+        assert body_with_spacing > 0, "Body paragraphs should have 1.5x line spacing applied"
+
+        # Verify body formatting was applied
+        body_formatted = False
         for para in formatted_doc.paragraphs:
-            if para.text and '摘要' not in para.text and 'Introduction' not in para.text:
+            if para.text.strip() and '摘要' not in para.text and '参考文献' not in para.text:
+                # This is body text, check its formatting
                 for run in para.runs:
-                    # Accept multiple font name variations
-                    if run.font.name in ['宋体', 'Song Ti', 'Songti', 'SimSun']:
-                        body_found = True
+                    if run.font.name in BODY_FONT_NAMES:
+                        body_formatted = True
                         break
-        # Body formatting may be applied, we check for existence but don't fail if missing
-        # because font names can vary across systems
+                if body_formatted:
+                    break
+
+        assert body_formatted, "Body text should have Song font formatting applied"
 
         # Check heading formatting exists
         heading_found = False
@@ -200,14 +225,12 @@ class TestIntegrationFormatting:
                     if run.bold:
                         heading_found = True
                         break
+                if heading_found:
+                    break
 
-        # Either we found bold formatting or we have paragraphs
-        assert len(formatted_doc.paragraphs) > 0, "Document should have paragraphs"
+        assert heading_found, "Headings should be formatted with bold"
 
-        # Cleanup
-        os.remove(formatted_path)
-
-    def test_integration_content_preservation(self, complex_thesis_doc):
+    def test_integration_content_preservation(self, complex_thesis_doc, cleanup_formatted_file):
         """Verify document content is preserved during formatting.
 
         This test ensures that:
@@ -215,45 +238,36 @@ class TestIntegrationFormatting:
         - Paragraph count is similar (within small margin for formatting changes)
         - Key sections are intact
         """
-        # Read original
+        # Load original document for comparison
         original_doc = Document(complex_thesis_doc)
         original_text = '\n'.join([p.text for p in original_doc.paragraphs])
-        original_para_count = len(original_doc.paragraphs)
+        original_para_count = len([p for p in original_doc.paragraphs if p.text.strip()])
 
-        # Format
+        # Format and load
         formatter = DocumentFormatter()
         formatted_path = formatter.format_document(str(complex_thesis_doc), keep_original=False)
+        cleanup_formatted_file.append(formatted_path)
         formatted_doc = Document(formatted_path)
         formatted_text = '\n'.join([p.text for p in formatted_doc.paragraphs])
-        formatted_para_count = len(formatted_doc.paragraphs)
+        formatted_para_count = len([p for p in formatted_doc.paragraphs if p.text.strip()])
 
-        # Verify key content preserved
-        assert '摘要' in formatted_text, "Abstract header should be preserved"
-        assert '1 Introduction' in formatted_text or '1' in formatted_text, \
-            "Introduction section should be preserved"
-        assert '参考文献' in formatted_text, "References header should be preserved"
+        # Verify critical sections preserved
+        assert '摘要' in formatted_text, "Abstract section should be preserved"
+        assert '参考文献' in formatted_text, "References section should be preserved"
+        assert 'Introduction' in formatted_text, "Introduction should be preserved"
 
-        # Count paragraphs (should be similar, allow small variation)
-        # Allow up to 2 paragraph difference due to how python-docx handles formatting
-        assert abs(original_para_count - formatted_para_count) <= 2, \
-            f"Paragraph count should be similar: original {original_para_count}, " \
-            f"formatted {formatted_para_count}"
+        # Verify paragraph count is similar (allowing small margin for formatting changes)
+        assert abs(original_para_count - formatted_para_count) <= 1, \
+            f"Paragraph count should be preserved (was {original_para_count}, now {formatted_para_count})"
 
-        # Verify major content blocks are present
-        for key_text in ['摘要', '参考文献', 'Methodology']:
-            assert key_text in formatted_text or key_text.lower() in formatted_text.lower(), \
-                f"Key text '{key_text}' should be preserved"
-
-        # Cleanup
-        os.remove(formatted_path)
-
-    def test_integration_output_file_naming(self, simple_thesis_doc):
+    def test_integration_output_file_naming(self, simple_thesis_doc, cleanup_formatted_file):
         """Verify output file naming follows the expected convention.
 
         Tests that formatted output is created with _formatted suffix.
         """
         formatter = DocumentFormatter()
         formatted_path = formatter.format_document(simple_thesis_doc, keep_original=False)
+        cleanup_formatted_file.append(formatted_path)
 
         # Verify output path contains '_formatted' suffix
         assert '_formatted' in formatted_path, \
@@ -261,10 +275,7 @@ class TestIntegrationFormatting:
         assert formatted_path.endswith('.docx'), \
             "Output file should be .docx format"
 
-        # Cleanup
-        os.remove(formatted_path)
-
-    def test_integration_document_validity(self, complex_thesis_doc):
+    def test_integration_document_validity(self, complex_thesis_doc, cleanup_formatted_file):
         """Verify formatted document can be opened and is valid.
 
         This test ensures the output is a valid .docx file that can be
@@ -272,6 +283,7 @@ class TestIntegrationFormatting:
         """
         formatter = DocumentFormatter()
         formatted_path = formatter.format_document(str(complex_thesis_doc), keep_original=False)
+        cleanup_formatted_file.append(formatted_path)
 
         # Should not raise any exception
         formatted_doc = Document(formatted_path)
@@ -281,10 +293,7 @@ class TestIntegrationFormatting:
         assert formatted_doc.sections is not None
         assert len(formatted_doc.sections) > 0
 
-        # Cleanup
-        os.remove(formatted_path)
-
-    def test_integration_page_numbers(self, simple_thesis_doc):
+    def test_integration_page_numbers(self, simple_thesis_doc, cleanup_formatted_file):
         """Verify page numbers are added to document footer.
 
         Tests that:
@@ -294,6 +303,7 @@ class TestIntegrationFormatting:
         """
         formatter = DocumentFormatter()
         formatted_path = formatter.format_document(simple_thesis_doc, keep_original=False)
+        cleanup_formatted_file.append(formatted_path)
 
         formatted_doc = Document(formatted_path)
 
@@ -305,10 +315,7 @@ class TestIntegrationFormatting:
         assert footer is not None, "Section should have footer"
         assert len(footer.paragraphs) > 0, "Footer should have at least one paragraph"
 
-        # Cleanup
-        os.remove(formatted_path)
-
-    def test_integration_multiple_sections(self, tmp_path):
+    def test_integration_multiple_sections(self, tmp_path, cleanup_formatted_file):
         """Test formatting of document with multiple sections.
 
         Verifies that margins and formatting are applied to all sections.
@@ -324,6 +331,7 @@ class TestIntegrationFormatting:
 
         formatter = DocumentFormatter()
         formatted_path = formatter.format_document(str(doc_path), keep_original=False)
+        cleanup_formatted_file.append(formatted_path)
 
         formatted_doc = Document(formatted_path)
 
@@ -331,6 +339,3 @@ class TestIntegrationFormatting:
         for section in formatted_doc.sections:
             assert section.top_margin == Cm(2), "All sections should have top margin"
             assert section.bottom_margin == Cm(2), "All sections should have bottom margin"
-
-        # Cleanup
-        os.remove(formatted_path)
