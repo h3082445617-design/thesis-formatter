@@ -5,6 +5,7 @@ import pytest
 from pathlib import Path
 from docx import Document
 from docx.shared import Pt, Cm
+from docx.oxml.ns import qn
 from src.formatters import CmnuFormatter
 from src.utils import SectionDetector, StyleApplier
 
@@ -347,6 +348,13 @@ class TestCmnuFormatter:
         # 前文应该使用罗马数字，正文应该使用阿拉伯数字
         assert len(doc.sections) >= 1
 
+        # 验证Roman format was applied to first section
+        section0 = doc.sections[0]
+        pgNumType = section0._sectPr.find(qn('w:pgNumType'))
+        assert pgNumType is not None, "First section should have pgNumType element"
+        fmt_value = pgNumType.get(qn('w:fmt'))
+        assert fmt_value == 'upperRoman', f"Expected 'upperRoman', got {fmt_value}"
+
         # 保存以验证设置
         doc.save(str(tmp_path / "test_page_numbers_output.docx"))
 
@@ -381,6 +389,23 @@ class TestCmnuFormatter:
         output_doc = Document(output_path)
         assert len(output_doc.paragraphs) == 6
 
+        # Verify section[0] has Roman format
+        section0 = output_doc.sections[0]
+        pgNumType0 = section0._sectPr.find(qn('w:pgNumType'))
+        assert pgNumType0 is not None, "First section should have pgNumType element"
+        fmt_value0 = pgNumType0.get(qn('w:fmt'))
+        assert fmt_value0 == 'upperRoman', f"Section[0] expected 'upperRoman', got {fmt_value0}"
+
+        # Verify section[1] has Arabic format with restart at 1
+        if len(output_doc.sections) > 1:
+            section1 = output_doc.sections[1]
+            pgNumType1 = section1._sectPr.find(qn('w:pgNumType'))
+            assert pgNumType1 is not None, "Second section should have pgNumType element"
+            fmt_value1 = pgNumType1.get(qn('w:fmt'))
+            assert fmt_value1 == 'decimal', f"Section[1] expected 'decimal', got {fmt_value1}"
+            start_value = pgNumType1.get(qn('w:start'))
+            assert start_value == '1', f"Section[1] expected start='1', got {start_value}"
+
     def test_page_numbers_no_body_part(self, tmp_path):
         """测试页码设置：body part not found, should return early"""
         doc = Document()
@@ -399,6 +424,9 @@ class TestCmnuFormatter:
 
         # 文档应该仍然有效
         assert len(doc.paragraphs) == 2
+
+        # Verify no new section was created (should still have only 1 section)
+        assert len(doc.sections) == 1, "Should still have only 1 section when body part is missing"
 
 
 class TestSectionDetector:

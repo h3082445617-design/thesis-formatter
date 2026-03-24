@@ -30,6 +30,11 @@ class CmnuFormatter:
         '五号': Pt(10.5),    # 参考文献条目
     }
 
+    # 页码格式常量
+    PAGE_FORMAT_ROMAN = 'upperRoman'
+    PAGE_FORMAT_ARABIC = 'decimal'
+    EXCLUDED_SECTPR_TAGS = {'pgNumType', 'footerReference', 'headerReference'}
+
     def __init__(self):
         """初始化格式化器"""
         self.style_applier = StyleApplier()
@@ -424,9 +429,10 @@ class CmnuFormatter:
 
         # 复制关键属性：页面尺寸、边距等
         for child in original_sectPr:
+            # Word uses namespace format like '{http://...}pgNumType', strip namespace to get tag name
             tag_name = child.tag.split('}')[-1] if '}' in child.tag else child.tag
             # 跳过已有的 page number type 设置
-            if tag_name not in ['pgNumType', 'footerReference', 'headerReference']:
+            if tag_name not in self.EXCLUDED_SECTPR_TAGS:
                 new_child = OxmlElement(child.tag)
                 new_child.attrib.update(child.attrib)
                 new_sectPr.append(new_child)
@@ -457,9 +463,9 @@ class CmnuFormatter:
 
             # 设置页码格式
             if num_format == 'roman':
-                pgNumType.set(qn('w:fmt'), 'upperRoman')
+                pgNumType.set(qn('w:fmt'), self.PAGE_FORMAT_ROMAN)
             elif num_format == 'arabic':
-                pgNumType.set(qn('w:fmt'), 'decimal')
+                pgNumType.set(qn('w:fmt'), self.PAGE_FORMAT_ARABIC)
 
             # 设置起始页码
             if start_num is not None:
