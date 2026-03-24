@@ -68,6 +68,56 @@ class TestCmnuFormatter:
         with pytest.raises(ValueError):
             formatter.format_document("")
 
+    def test_format_abstract_title(self, tmp_path):
+        """测试摘要标题格式化（三号黑体，居中）"""
+        doc = Document()
+        para_title = doc.add_paragraph('摘要')
+        para_content = doc.add_paragraph('这是摘要内容。')
+        para_keywords = doc.add_paragraph('关键词: 词1; 词2')
+
+        input_path = tmp_path / "test_abstract.docx"
+        doc.save(str(input_path))
+
+        formatter = CmnuFormatter()
+        parts = {'abstract': (0, 2)}
+
+        # 手动调用格式化（暂不通过主流程）
+        doc = Document(str(input_path))
+        formatter._format_abstract(doc, parts)
+
+        # 检查标题
+        title_para = doc.paragraphs[0]
+        title_run = title_para.runs[0]
+
+        assert title_run.font.name == '黑体'
+        assert title_run.font.size == Pt(16)  # 三号
+        assert title_run.bold == True
+        assert title_para.paragraph_format.alignment == 1  # 居中
+
+    def test_format_abstract_content(self, tmp_path):
+        """测试摘要正文格式化（小四号宋体，1.5倍行距，首行缩进）"""
+        doc = Document()
+        doc.add_paragraph('摘要')
+        para_content = doc.add_paragraph('这是摘要内容。')
+
+        input_path = tmp_path / "test_abstract.docx"
+        doc.save(str(input_path))
+
+        formatter = CmnuFormatter()
+        parts = {'abstract': (0, 1)}
+
+        doc = Document(str(input_path))
+        formatter._format_abstract(doc, parts)
+
+        # 检查正文
+        content_para = doc.paragraphs[1]
+        content_run = content_para.runs[0]
+
+        assert content_run.font.name == '宋体'
+        assert content_run.font.size == Pt(12)  # 小四号
+        assert content_para.paragraph_format.line_spacing == 1.5
+        assert content_para.paragraph_format.first_line_indent == Cm(0.5)  # 2字符缩进
+
 
 class TestSectionDetector:
     """部分检测器测试"""

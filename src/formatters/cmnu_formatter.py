@@ -106,8 +106,54 @@ class CmnuFormatter:
 
     # TODO: 实现各部分格式化方法
     def _format_abstract(self, doc: Document, parts: Dict):
-        """格式化摘要"""
-        pass
+        """
+        格式化摘要部分
+
+        标题: 三号黑体，居中，单倍行距，段前24磅/段后18磅
+        正文: 小四号宋体，1.5倍行距，首行缩进2字符
+        关键词标签: 四号黑体
+        关键词内容: 小四号宋体
+        """
+        if parts.get('abstract') is None:
+            return
+
+        start, end = parts['abstract']
+
+        for idx in range(start, end + 1):
+            if idx >= len(doc.paragraphs):
+                break
+
+            para = doc.paragraphs[idx]
+            text = para.text.strip()
+
+            # 标题行（包含"摘要"）
+            if '摘要' in text and idx == start:
+                for run in para.runs:
+                    self.style_applier.apply_font(run, '黑体', Pt(16), bold=True)
+                pf = para.paragraph_format
+                pf.alignment = 1  # 居中
+                pf.line_spacing = 1.0
+                pf.space_before = Pt(24)
+                pf.space_after = Pt(18)
+
+            # 关键词标签行
+            elif text.startswith('关键词:') or text.startswith('关键词：'):
+                for run in para.runs:
+                    if '关键词' in run.text:
+                        self.style_applier.apply_font(run, '黑体', Pt(14), bold=True)
+                    else:
+                        self.style_applier.apply_font(run, '宋体', Pt(12), bold=False)
+
+            # 普通正文
+            else:
+                for run in para.runs:
+                    self.style_applier.apply_font(run, '宋体', Pt(12), bold=False)
+
+                pf = para.paragraph_format
+                pf.line_spacing = 1.5
+                pf.first_line_indent = Cm(0.5)  # 2字符缩进
+                pf.space_before = Pt(0)
+                pf.space_after = Pt(6)
 
     def _format_toc(self, doc: Document, parts: Dict):
         """格式化目录"""
